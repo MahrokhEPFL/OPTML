@@ -22,9 +22,6 @@ from torch.nn.parameter import Parameter
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, explained_variance_score, r2_score
 
-random.seed(30)
-np.random.seed(30)
-
 class SyNet(sy.Module):
     def __init__(self, torch_ref, in_dim, out_dim):
         super(SyNet, self).__init__(torch_ref=torch_ref)
@@ -52,7 +49,10 @@ class Household:
     
     ##############################################################################################################    
     def construct_dataset(self, lags, step_ahead, options, 
-                          crop_years=False, run_rfecv=False, verbose=False):
+                          crop_years=False, run_rfecv=False, verbose=False, **kwargs):
+        '''
+        kwargs: date_st (only use data after this date), date_en (only use data before this date)
+        '''
         self.options = options
         # load consumption data
         cons_data = get_data_of_a_person(block=self.block_num, 
@@ -61,6 +61,11 @@ class Household:
         if len(cons_data.date)==0:
             print('[Error] no data')
             return
+        # set dates
+        if 'date_st' in kwargs:
+            cons_data = cons_data.loc[cons_data.date >= date_st]
+        if 'date_en' in kwargs:
+            cons_data = cons_data.loc[cons_data.date <  date_en]
         # set resolution
         if self.options['resolution']==60:
             energies = cons_data.energy.values
@@ -147,8 +152,8 @@ class Household:
         '''
         # unpack kwargs
         verbose=kwargs.get('verbose', False)
-        iterations=kwargs.get('iterations', 30)
-        lr=kwargs.get('lr', 0.1)
+        iterations=kwargs.get('iterations')
+        lr=kwargs.get('lr')
         if (iterations in kwargs) or (lr in kwargs):
             if (not method=='Adam') and (not method=='AdamGP'):
                 print('[WARNING] number of iterations or learning rate will not be used.')
@@ -194,14 +199,10 @@ class Household:
                 output = model(torch.FloatTensor(self.X_train))
                 # calculate loss
                 loss = torch.nn.functional.mse_loss(output, torch.FloatTensor(self.y_train.reshape(-1, 1)))
-                
-                # print info
-                if i % 10 == 0 and verbose:
-                    print("Epoch ", i, " train loss", loss.item())
                 loss.backward()
                 optim.step()
                 if verbose:
-                    print('iter ' + str(i))
+                    print("Epoch ", i, " train loss", loss.item())
                     print(model.state_dict())
             self.personal_lr = model
             self.params = self.personal_lr.state_dict()
@@ -255,6 +256,7 @@ class Household:
         kwargs: mini batch size (mbsize), verbose for printing the results
         '''
         # unpack kwargs
+        verbose=kwargs.get('verbose', False)
         mbsize=kwargs.get('mbsize')
         # check if training data is available
         if not self.has_train_data:
@@ -273,6 +275,8 @@ class Household:
             loss = torch.nn.functional.mse_loss(output, torch.FloatTensor(self.y_train.reshape(-1, 1)))
             loss.backward()
             optim.step()
+            if verbose and i%10==0:
+                print("Epoch ", i, " train loss", loss.item())
         # calculate change
         delta_weight = model.state_dict()['linear.weight'].numpy().flatten()-cur_state_dict['linear.weight'].numpy().flatten()
         delta_bias = model.state_dict()['linear.bias'].numpy() - cur_state_dict['linear.bias'].numpy()

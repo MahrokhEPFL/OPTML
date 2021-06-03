@@ -26,4 +26,35 @@ def compute_primal(X, Y, W, Omega, lambda_):
     return primal_obj
 
 
-def compute_rmse()
+def compute_rmse(X, Y, W, opts):
+    '''
+    
+    '''
+    m = X.shape[0]
+    n = Y.shape[1]
+    Y_hat = torch.empty((m, n))
+    
+    for t in range(m):
+        if opts['obj'] == 'R':
+            Y_hat[t] = torch.mv(X[t], W[:,t])
+        else:
+            Y_hat[t] = torch.mv(torch.sign(X[t]), W[:,t])
+            
+    if opts['avg']:
+        all_errs = torch.zeros((m))
+        for t in range(m):
+            if opts['obj'] == 'R':
+                all_errs[t] = torch.sqrt(torch.mean((Y[t] - Y_hat[t]).pow(2)))
+            else:
+                all_errs[t] = torch.mean((Y[t]!=Y_hat[t]).float())
+                
+        err = torch.mean(all_errs)
+        
+    else:
+        Y = Y.reshape((m*n))
+        Y_hat = Y_hat.reshape((m*n))
+        if opts['obj']=='R':
+            err = torch.sqrt(torch.mean((Y-Y_hat).pow(2)))
+        else:
+            err = torch.mean((Y!=Y_hat).float())
+    return err

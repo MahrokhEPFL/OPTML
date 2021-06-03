@@ -6,7 +6,7 @@ def compute_dual(alpha, Y, W, Omega, lambda_):
     
     '''
     total_alpha = 0
-    for tt in range(Y.shape(0)):
+    for tt in range(Y.shape[0]):
         total_alpha += torch.mean(-1.0 * alpha[tt] * Y[tt])
     dual_obj = -0.5 * lambda_ * torch.trace(torch.mm(torch.mm(W, Omega), torch.inverse(W)))
     return dual_obj

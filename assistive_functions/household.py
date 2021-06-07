@@ -63,9 +63,9 @@ class Household:
             return
         # set dates
         if 'date_st' in kwargs:
-            cons_data = cons_data.loc[cons_data.date >= date_st]
+            cons_data = cons_data.loc[cons_data.date >= kwargs.get('date_st')]
         if 'date_en' in kwargs:
-            cons_data = cons_data.loc[cons_data.date <  date_en]
+            cons_data = cons_data.loc[cons_data.date <  kwargs.get('date_en')]
         # set resolution
         if self.options['resolution']==60:
             energies = cons_data.energy.values

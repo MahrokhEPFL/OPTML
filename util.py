@@ -13,12 +13,12 @@ def compute_dual(alpha, Y, W, Omega, lambda_):
 
 
 
-def compute_primal(X, Y, W, Omega, lambda_):
+def compute_primal_prev(X, Y, W, Omega, lambda_):
     '''
     
     '''
     total_loss = 0
-    for t in range(X.shape[0]):
+    for t in range(len(X)):
         preds = torch.mv(Y[t]*X[t], W[:,t])
         total_loss += torch.mean(torch.max(torch.zeros(preds.shape), 1.0 - preds))
         
@@ -91,3 +91,35 @@ def compute_rmse(X, Y, W, opts):
         err = np.mean(all_errs)**0.5
         
     return err
+
+
+def compute_primal(X, Y, W, Omega, lambda_):
+    '''
+    Primal for regression.
+    
+    Output: 
+    MSE of all tasks and all smaples + regularization penalty 
+    
+    Note: the original implementation is for classification tasks
+    Note: not used in the algorithm, only for evaluation purpose. 
+    Note: this is not a federated implementation.
+    Note: the original implementation might cause an overflow! 
+          this code averages the losses and wouldn't overflow. 
+    '''
+    # calculate total num of samples from all households
+    total_samples = 0   
+    for t in range(len(X)):
+        total_samples = total_samples + X[t].shape[0]
+        
+    total_loss = 0 # MSE of all smaples and all tasks
+    for t in range(len(X)):
+        # predict
+        preds = np.matmul(X[t], W[:, t])
+        # add squared loss for task t divided by the total samples
+        total_loss = total_loss + np.sum(((Y[t]-preds).flatten())**2)/total_samples
+
+    # add regularization term
+    reg = np.trace(np.matmul(np.matmul(W, Omega), np.transpose(W)))
+    primal_obj = total_loss + 0.5 * lambda_ * reg
+    return primal_obj
+

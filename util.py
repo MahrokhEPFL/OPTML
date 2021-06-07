@@ -1,5 +1,5 @@
 import torch
-
+import numpy as np
 
 def compute_dual(alpha, Y, W, Omega, lambda_):
     '''
@@ -26,7 +26,7 @@ def compute_primal(X, Y, W, Omega, lambda_):
     return primal_obj
 
 
-def compute_rmse(X, Y, W, opts):
+def compute_rmse_prev(X, Y, W, opts):
     '''
     
     '''
@@ -57,4 +57,37 @@ def compute_rmse(X, Y, W, opts):
             err = torch.sqrt(torch.mean((Y-Y_hat).pow(2)))
         else:
             err = torch.mean((Y!=Y_hat).float())
+    return err
+
+def compute_rmse(X, Y, W, opts):
+    '''
+    Inputs:
+    - X: list of length m, each element is a 2D matrix size n*d of regression features
+    - Y: list of length m, each element is a 2D matrix size n*1 of regression targets
+    - W: array of size d*m, col t is the weights for task t
+    - opts: boolean opts['avg'] -> if true, first compute rmse for each task then average
+                                      else, first average MSE of tasks, then compute sqrt
+    Note: the original implementation supports both classification and regression errors, 
+          through opts['obj'], but we only use regression.
+    '''
+    m = len(X)    # m=number of tasks (in our prublem, num of households)
+    Y_hat = []    # empty list of length m
+                  
+    # predict
+    for t in range(m):
+        Y_hat.append(np.matmul(X[t], W[:,t])) # Y_hat[t]: mat size (n_t,1) of predictions for task (household) t
+        
+    # find MSE for each task
+    all_errs = np.zeros(m)
+    for t in range(m):
+        all_errs[t] = np.mean(((Y[t]-Y_hat[t]).flatten())**2)
+    
+    # combine errors of different tasks
+    if opts['avg']:
+        # first compute rmse for each task, then average
+        err = np.mean(all_errs**0.5)
+    else:
+        # first average MSE of tasks, then compute sqrt
+        err = np.mean(all_errs)**0.5
+        
     return err

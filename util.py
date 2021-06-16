@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 
-def compute_dual(alpha, Y, W, Omega, lambda_):
+def compute_dual_tf(alpha, Y, W, Omega, lambda_):
     '''
     
     '''
@@ -13,7 +13,7 @@ def compute_dual(alpha, Y, W, Omega, lambda_):
 
 
 
-def compute_primal_prev(X, Y, W, Omega, lambda_):
+def compute_primal_tf(X, Y, W, Omega, lambda_):
     '''
     
     '''
@@ -26,7 +26,7 @@ def compute_primal_prev(X, Y, W, Omega, lambda_):
     return primal_obj
 
 
-def compute_rmse_prev(X, Y, W, opts):
+def compute_rmse_tf(X, Y, W, opts):
     '''
     
     '''
@@ -123,3 +123,12 @@ def compute_primal(X, Y, W, Omega, lambda_):
     primal_obj = total_loss + 0.5 * lambda_ * reg
     return primal_obj
 
+def compute_dual(alpha, Y, W, Omega, lambda_):
+    '''
+    
+    '''
+    total_alpha = 0
+    for tt in range(Y.shape[0]):
+        total_alpha += torch.mean(-1.0 * alpha[tt] * Y[tt])
+    dual_obj = -0.5 * lambda_ * torch.trace(torch.mm(torch.mm(W, Omega), torch.inverse(W)))
+    return dual_obj

@@ -10,6 +10,7 @@ import statsmodels.api as sm
 import matplotlib.pyplot as plt
 
 from SMWrapper import SMWrapper
+from utils_households import penalty
 from load_data import get_data_of_a_person
 from construct_dataset import construct_dataset
 
@@ -386,37 +387,40 @@ class Household:
         return res
 
     
-    ##############################################################################################################
-    def plot_gp(self):
-        # Plotting the results (two standard deviations = 95% confidence)
-        fig = plt.figure(figsize=(12,6))
-        # GP
-        mean = np.concatenate((self.y_pred_gp_train, self.y_pred_gp_test))
-        var  = np.concatenate((self.var_train, self.var_test))
-        xx   = np.arange(self.info['train_samples']+self.info['test_samples'])
-        plt.plot(xx, mean, color='#0072BD', lw=2, label = 'GP mean')
-        plt.fill_between(xx,
-                         mean - 2 * np.sqrt(var),
-                         mean + 2 * np.sqrt(var),
-                         color='#0072BD',
-                         alpha=0.2, label = 'GP conf. bound')
-        # data
-        plt.plot(xx, np.concatenate((self.y_train, self.y_test)), "o", color='#484848', ms=3.5, label = 'data points')
-        # LR
-        y_pred = np.concatenate((self.y_pred_lr_train, self.y_pred_lr_test))
-        plt.plot(xx, y_pred, color='orange', lw=1, label = 'linear regression')
-        plt.vlines(self.info['train_samples']-1, -0.2, ymax=4.2, colors='k', linestyles='dashed', label='test')
-        plt.legend()
-        #plt.xlim([0,N])
-        plt.tight_layout()
-        plt.xlabel('sample number'), plt.ylabel('electricity consumption')
-        plt.title('Comparing Gaussian process and linear regression with ' + str(self.info['train_samples']) + ' samples')
-        plt.show()
+    def mtl_init(self, lr):
+        # check if training data is available
+        if not self.has_train_data:
+            print('no train data')
+            return
+        # initial model
+        self.model_mtl = SyNet(torch, in_dim=self.info['num_features'] , out_dim=1)
+        # initialize optimizer
+        self.optim_mtl = torch.optim.Adam(params=self.model_mtl.parameters(),lr=lr)
+        return
         
         
-        
-        
-    
-    
-    
-    
+    def mtl_iterate(self, w_0_wght, w_0_bias, inner_iters, lambda_, verbose):
+        # get current parameters
+        cur_state_dict=copy.deepcopy(self.model_mtl.state_dict())
+
+        # iterate
+        for i in np.arange(inner_iters):
+            self.optim_mtl.zero_grad()
+            # prediction loss
+            output = self.model_mtl(torch.FloatTensor(self.X_train))
+            loss = torch.nn.MSELoss()(output, torch.FloatTensor(self.y_train.reshape(-1, 1)))
+            
+            # penalty
+            l2_reg = torch.tensor(0.)
+            l2_reg += torch.norm(self.model_mtl.parameters()[0]-w_0_wght)
+            l2_reg += torch.norm(self.model_mtl.parameters()[1]-w_0_bias)
+            loss += lambda_ * l2_reg
+            
+            loss.backward()
+            self.optim_mtl.step()
+            if verbose and i%10==0:
+                print("Epoch ", i, " train loss", loss.item())
+        # calculate change
+        delta_weight = self.model_mtl.state_dict()['linear.weight'].numpy().flatten()-cur_state_dict['linear.weight'].numpy().flatten()
+        delta_bias = self.model_mtl.state_dict()['linear.bias'].numpy() - cur_state_dict['linear.bias'].numpy()
+        return delta_bias, delta_weight

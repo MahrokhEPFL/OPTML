@@ -1,8 +1,9 @@
 import os
 import sys
+import copy
+import torch
 import numpy as np
 import pandas as pd
-from household import Household
 
 # candidate lags
 def get_lags(step_ahead, num_days=np.array([0,1,7])):
@@ -13,6 +14,7 @@ def get_lags(step_ahead, num_days=np.array([0,1,7])):
     return lags
 
 def connect_to_households(household_options):
+    from household import Household
     # get candidate houses from the selected group
     path = os.getcwd()+"/input/informations_households.csv.xls"
     data = pd.read_csv(path)
@@ -55,3 +57,10 @@ def connect_to_households(household_options):
 
     print('\n[INFO] Connected to ' + str(len(households)) + ' households')
     return households
+
+def penalty(model_n, model_0, lambda_):
+    st_dict_n = copy.deepcopy(model_n.state_dict())
+    st_dict_0 = copy.deepcopy(model_0.state_dict())
+    w_n = np.hstack((st_dict_n['linear.bias'].numpy(),st_dict_n['linear.weight'].numpy().flatten()))
+    w_0 = np.hstack((st_dict_0['linear.bias'].numpy(),st_dict_0['linear.weight'].numpy().flatten()))
+    return lambda_ * torch.nn.MSELoss()(torch.FloatTensor(w_n), torch.FloatTensor(w_0))

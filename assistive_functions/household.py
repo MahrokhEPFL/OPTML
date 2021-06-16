@@ -300,6 +300,9 @@ class Household:
         if method=='Adam':
             model = kwargs.get('model', self.personal_lr)
             return model(torch.FloatTensor(data)).data.numpy().flatten()
+        if method=='MTL':
+            model = kwargs.get('model', self.model_mtl)
+            return model(torch.FloatTensor(data)).data.numpy().flatten()
         if method=='GP':
             if 'model' in kwargs:
                 model = kwargs.get('model')
@@ -412,8 +415,10 @@ class Household:
             
             # penalty
             l2_reg = torch.tensor(0.)
-            l2_reg += torch.norm(self.model_mtl.parameters()[0]-w_0_wght)
-            l2_reg += torch.norm(self.model_mtl.parameters()[1]-w_0_bias)
+            l2_reg += torch.square(self.model_mtl.parameters()[0]-w_0_wght).sum().sum()
+            l2_reg += torch.square(self.model_mtl.parameters()[1]-w_0_bias).sum().sum()
+            #l2_reg += torch.norm(self.model_mtl.parameters()[0]-w_0_wght)
+            #l2_reg += torch.norm(self.model_mtl.parameters()[1]-w_0_bias)
             loss += lambda_ * l2_reg
             
             loss.backward()

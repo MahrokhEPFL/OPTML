@@ -1,6 +1,6 @@
 # Manual
 *.DS_Store
-input/
+input/halfhourly_dataset
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -346,7 +346,8 @@ def add_hourly_weather(df_1p, verbose=False):
     
     # merge
     if not df_1p.date.size == w_hourly2.date.size:
-        print('\nError: data size mismatch')
+        print('\n[Warning]: data size mismatch')
+        return pd.DataFrame({'date':[]})
     df_1p['temperature_hourly'] = w_hourly2['temperature']
     df_1p['icon_hourly'] = w_hourly2['icon']
     
@@ -382,7 +383,7 @@ def get_data_of_a_person(block=5, house_id="MAC004504", crop_years=True, verbose
     
     # check
     if(len(data.date)<365*48):
-        print('[WARNING] data is too short (less than 1 year)')
+        print('[Warning] data is too short (less than 1 year)')
         return pd.DataFrame({'date':[]})
     
     # add features
@@ -390,13 +391,18 @@ def get_data_of_a_person(block=5, house_id="MAC004504", crop_years=True, verbose
     
     data = add_hourly_weather(data, verbose=verbose)
     
+    # check
+    if(len(data.date)<365*48):
+        print('[Warning] data is too short (less than 1 year)')
+        return pd.DataFrame({'date':[]})
+    
     data = add_daily_features(data, verbose=verbose)
     
     # clean
     data = clean_data(data, verbose=verbose)
     # check for NaN again
     if data.isnull().sum().sum()>0:
-        print('Error: data contains NaN')
+        print('[Error]: data contains NaN')
     else:
         if verbose:
             print('\n   ***   DATA IS READY FOR USE   ***\n')

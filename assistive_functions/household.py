@@ -10,7 +10,6 @@ import statsmodels.api as sm
 import matplotlib.pyplot as plt
 
 from SMWrapper import SMWrapper
-from utils_households import penalty
 from load_data import get_data_of_a_person
 from construct_dataset import construct_dataset
 
@@ -47,22 +46,32 @@ class Household:
         self.X = []
         self.y = []
         
+        
+    def load_data(self, crop_years=False, verbose=False):
+        # load consumption data
+        self.cons_data = get_data_of_a_person(block=self.block_num, 
+            house_id=self.house_id, crop_years=crop_years, verbose=verbose)
+        # check
+        if len(self.cons_data.date)<365*48:
+            print('[Warning] less than 1 year of data')
+            return False
+        self.date_join = self.cons_data.date.iloc[0]
+        self.date_left = self.cons_data.date.iloc[-1]
+        return True
     
     ##############################################################################################################    
     def construct_dataset(self, lags, step_ahead, options, 
-                          crop_years=False, run_rfecv=False, verbose=False, **kwargs):
+                          run_rfecv=False, verbose=False, **kwargs):
         '''
         kwargs: date_st (only use data after this date), date_en (only use data before this date)
         '''
         self.options = options
-        # load consumption data
-        cons_data = get_data_of_a_person(block=self.block_num, 
-            house_id=self.house_id, crop_years=crop_years, verbose=verbose)
         # check
-        if len(cons_data.date)==0:
+        if len(self.cons_data.date)==0:
             print('[Error] no data')
             return
         # set dates
+        cons_data = self.cons_data 
         if 'date_st' in kwargs:
             cons_data = cons_data.loc[cons_data.date >= kwargs.get('date_st')]
         if 'date_en' in kwargs:
